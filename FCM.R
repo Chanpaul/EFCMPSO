@@ -2,6 +2,7 @@ library(base)
 library(stats)
 library(gtools)  # for permu
 library(pdfCluster) #for adjusted rand index;
+library(dplyr)
 
 #@param particle = list(pbest=pbest,muX=muX,muV=muV,fitness=0)
 #@particle$pbest    the best of the particle;
@@ -611,4 +612,27 @@ regularize<-function(X){
   zz<-apply(X,2,function(m) (m - min(m))/(max(m)-min(m)))
   return(zz) 
 }
+singleCategoryToReal<-function(x) {
+  #browser()
+  if (class(x)=="factor"){
+    pop<-unique(x)
+    y<-unlist(lapply(x,function(z) which(pop==z)))
+  } else y<-x
+  return (y)
+}
+batchCategoryToReal<-function(dt){
+  newDt<-lapply(as.list(dt),singleCategoryToReal)
+  newDt<-matrix(unlist(newDt),ncol=length(newDt),byrow=FALSE)
+  
+  # newDt<-dt
+  # for (i in 1:ncol(dt)){
+  #   if (class(dt[,i])=="factor"){
+  #     pop<-unique(dt[,i])
+  #     for (j in pop){
+  #       newDt[dt[,i]==j,i]=which(pop==j)  
+  #     }  
+  #   }
+    return(newDt)
+}
+
 

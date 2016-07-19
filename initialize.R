@@ -19,17 +19,15 @@ id<-1
 dataFile<-"bankMarket//bank-full.csv"
 dataName<-paste0(dirPath,dataFile)
 dataFile<-list(name=dataName,fmt="csv",sep=";",
-               label=17,cn=2,attrCol=c(1,12,13,14,15)
+               label=17,cn=2,attrCol=1:16
                )
-
 dataFileList[[id]]<-dataFile
 id<-id+1
-
 ##*****************credit card client****************
 dataFile<-"credit_card_client//default_of_credit_card_clients.csv"
 dataName<-paste0(dirPath,dataFile)
 dataFile<-list(name=dataName,fmt="csv",sep=",",
-               label=25,cn=2,attrCol=c(2,6:24))
+               label=25,cn=2,attrCol=2:24)
 
 dataFileList[[id]]<-dataFile
 id<-id+1
@@ -96,6 +94,9 @@ for (i in tf){
 ##********************end************************
 singleRun<-function(df,runType,initType,param){
   myData<-ImportData(df);
+  #browser()
+  myData<-batchCategoryToReal(myData);
+  
   ptm<-proc.time()
   initFunc<-match.fun(initType)
   regularized<-regularize(myData[,df$attrCol])

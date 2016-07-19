@@ -2,68 +2,77 @@ library(base)
 library(stats)
 library(gtools)  # for permu
 library(pdfCluster) #for adjusted rand index;
-fcm<- function (dataset,param)  #param is a list
-{
-  X<-dataset;
-  initValidityXB<-10000000;
-  cn<-param$cn;#cn is cluster number
-  m<-param$m;
-  e<-param$e;
-  N<-nrow(X)
-  n<-ncol(X)
-  #****************Initialization randomly select centroids********
-  X1 <-c(rep(1,N));
-  set.seed(1000);
-  centroidIndex=sample(1:N,cn);   #Generate N unrepeatable integers, then we select c of them.
-  v<-c();
-  d<-c();
-  #browser();
-  for (j in 1:cn){
-    tempRow<-X[centroidIndex[j],];
-    v<-rbind(v,tempRow);
-    xv = X - tcrossprod(X1,v[j,])#X1%*%t(v[j,]);
-    tempDist<-apply(xv,1,function(x) sum(x^2));
-    d<-cbind(d,tempDist);
-  }
-  d0<-d;
-  #browser()
-  d <- (d+1e-10)^(-1/(m-1));
-  f0 <- d/tcrossprod(apply(d,1,sum),rep(1,cn));
-  iter <- 0;                       # iteration counter
-  initialJ<-10000000000000000;
-  
-  J0<-sum(diag(t(f0^m)%*%d0));
-  distout<-c();
-  J<-c();
-  while (abs(J0-initialJ)>e){
-    iter = iter + 1;
-    initialJ=J0;
-    # Calculate centers
-    fm <-f0^m;
-    sumf<-apply(fm,2,sum);
-    #sumf = sum(fm);
-    v<-crossprod(fm,X)/(sumf%*%t(rep(1,n)));
-    #v = (fm'*X)./(sumf'*ones(1,n)); 
-    d<-c();
-    for (j in 1:cn){
-      xv = X - tcrossprod(X1,v[j,]);
-      #xv = X - X1*v[j,];
-      tempDist<-apply(xv,1,function(x) sum(x^2));
-      d<-cbind(d,tempDist);
-      #d[,j] = (xv*eye(n).*xv)*(w(j,:).^2)';
-    } 
-    distout<-sqrt(d);
-    d0<-d;  
-    J[iter]<-sum(diag(t(f0^m)%*%d0));
-    d = (d+1e-10)^(-1/(m-1));  #L2 distance
-    f0 <- d/tcrossprod(apply(d,1,sum),rep(1,cn));
-    #f0 = (d/ (sum(d,2)*ones(1,c)));      #method I
-    J0=J[iter];
-  }
-  #tEnd=toc(tStart);
-  #results
-  results<-list(f=f0,d=distout,v=v,iter=iter,cost=J);
-}
+
+#@param particle = list(pbest=pbest,muX=muX,muV=muV,fitness=0)
+#@particle$pbest    the best of the particle;
+#@particle$muX      the current position of the particle;
+#@particle$muV      the current speed of the particle;
+#@particle$fitness  the current fitness of the particle;
+#@ param=list(m=m,e=e,cn=cn)
+#@m fuziness
+#@e error bound
+#@cn cluster number
+
+# fcm<- function (dataset,param)  #param is a list
+# {
+#   X<-dataset;
+#   initValidityXB<-10000000;
+#   cn<-param$cn;#cn is cluster number
+#   m<-param$m;
+#   e<-param$e;
+#   N<-nrow(X)
+#   n<-ncol(X)
+#   #****************Initialization randomly select centroids********
+#   X1 <-c(rep(1,N));
+#   set.seed(1000);
+#   centroidIndex=sample(1:N,cn);   #Generate N unrepeatable integers, then we select c of them.
+#   v<-c();
+#   d<-c();
+#   #browser();
+#   for (j in 1:cn){
+#     tempRow<-X[centroidIndex[j],];
+#     v<-rbind(v,tempRow);
+#     xv = X - tcrossprod(X1,v[j,])#X1%*%t(v[j,]);
+#     tempDist<-apply(xv,1,function(x) sum(x^2));
+#     d<-cbind(d,tempDist);
+#   }
+#   d0<-d;
+#   #browser()
+#   d <- (d+1e-10)^(-1/(m-1));
+#   f0 <- d/tcrossprod(apply(d,1,sum),rep(1,cn));
+#   iter <- 0;                       # iteration counter
+#   initialJ<-10000000000000000;
+#   
+#   J0<-sum(diag(t(f0^m)%*%d0));
+#   distout<-c();
+#   J<-c();
+#   while (abs(J0-initialJ)>e){
+#     iter = iter + 1;
+#     initialJ=J0;
+#     # Calculate centers
+#     fm <-f0^m;
+#     sumf<-apply(fm,2,sum);
+#     #sumf = sum(fm);
+#     v<-crossprod(fm,X)/(sumf%*%t(rep(1,n)));
+#     #v = (fm'*X)./(sumf'*ones(1,n)); 
+#     d<-c();
+#     for (j in 1:cn){
+#       xv = X - tcrossprod(X1,v[j,]);
+#       #xv = X - X1*v[j,];
+#       tempDist<-apply(xv,1,function(x) sum(x^2));
+#       d<-cbind(d,tempDist);
+#       #d[,j] = (xv*eye(n).*xv)*(w(j,:).^2)';
+#     } 
+#     distout<-sqrt(d);
+#     d0<-d;  
+#     J[iter]<-sum(diag(t(f0^m)%*%d0));
+#     d = (d+1e-10)^(-1/(m-1));  #L2 distance
+#     f0 <- d/tcrossprod(apply(d,1,sum),rep(1,cn));
+#     #f0 = (d/ (sum(d,2)*ones(1,c)));      #method I
+#     J0=J[iter];
+#   }
+#   results<-list(f=f0,d=distout,v=v,iter=iter,cost=J);
+# }
 ImportData<-function(dataFile)
 {
   dataPath=dataFile$name;
@@ -77,11 +86,18 @@ ImportData<-function(dataFile)
   }
   else if (fileType=="txt")
   {
-    mydata=read.table(dataPath,sep=sepStr)    
+    
+    mydata<-read.table(dataPath,sep=sepStr)
+    
   }
   else if (fileType=="csv")
   {
-    mydata=read.csv(dataPath)
+    mydata=read.csv(dataPath,sep=sepStr,header=TRUE)
+  } else {
+    mydata<-strsplit(readLines(dataPath),"\n")
+    regPat<-"\\d*\\.?\\d+"
+    mydata<-lapply(mydata,function(line) as.numeric(grep(regPat,unlist(line),perl=TRUE,value=TRUE)))
+    mydata<-data.frame(matrix(unlist(mydata),nrow=length(mydata),byrow=TRUE))
   }
   return(mydata)  
 }
@@ -149,17 +165,18 @@ calibrate<-function(yte, true_label){
   ari<-adj.rand.index(pred_labels,true_label);
   res<-list(ari=ari,acc=accuracy, p_lab=pred_labels, CM=CM, corLab=corLabel);
 }
-randomInit<-function(dataset,param){  #random initialization;
+randomParInit<-function(dataset,param){  #random initialization;
   X<-dataset;
   cn<-param$cn;  #cluster number
   N<-nrow(X)     #number of data
   n<-ncol(X)     #number ofattribute
-  p<-10;         #number of particle
+  p<-param$pn;         #number of particle
+  m<-param$m
+  randSeedNum<-param$randSeed
   gfitness<-0;
   particle<-list();
   for (k in 1:p){
-    browser
-    set.seed(k);
+    set.seed(k+randSeedNum*100);
     pbest<-matrix(runif(N*cn,min=0,max=1),nrow=N,byrow=T)
     muX<-matrix(runif(N*cn,min=0,max=1),nrow=N,byrow=T)
     muV<-matrix(runif(N*cn,min=0,max=1),nrow=N,byrow=T)
@@ -167,19 +184,37 @@ randomInit<-function(dataset,param){  #random initialization;
     pbest<-pbest/tcrossprod(apply(pbest,1,sum),rep(1,cn));
     muX<-muX/tcrossprod(apply(muX,1,sum),rep(1,cn));
     muV<-muV/tcrossprod(apply(muV,1,sum),rep(1,cn));
-    particle[[k]]=list(pbest=pbest,muX=muX,muV=muV,center=c(),fitness=0);
     
+    fm <- pbest^m;
+    sumf<-apply(fm,2,sum);
+    v<-crossprod(fm,X)/(sumf%*%t(rep(1,n)));
+    d<-c()
+    X1<-rep(1,N);
+    for (j in 1 : cn){
+      xv = X - tcrossprod(X1,v[j,]);
+      tempDist<-apply(xv,1,function(x) sum(x^2));
+      d<-cbind(d,tempDist);
+    }
+    d<-sqrt(d)
+    fitness=sum(diag(t(fm)%*%d));
+    particle[[k]]=list(pbest=pbest,muX=muX,muV=muV,fitness=fitness,curFitness=fitness);
   }
-  gbest<-particle[[k]]$pbest;
-  result<-list(particle=particle,gbest=gbest)  #return particle and gbest;
+  return(particle)  #return particle;
 }
 
-denInit<-function(dataset,param,dc,krt) {  #krt is number of groups
+# mixDist<-function(dt,){
+#   
+# }
+
+denParInit<-function(dataset,param) {  #krt is number of groups
   X<-dataset;
   cn<-param$cn;  #cluster number
   N<-nrow(X)     #number of data
-  n<-ncol(X)     #number ofattribute
-  p<-10; #number of particle
+  n<-ncol(X)     #number of attribute
+  p<-param$pn; #number of particle
+  m<-param$m
+  krt<-param$krt;
+  dc<-param$dc
   distMx<-dist(X, method = "euclidean", p = 2)
   result<-initCentroid(as.matrix(distMx),dc);
   clustRt<-result$clustRt;
@@ -189,6 +224,7 @@ denInit<-function(dataset,param,dc,krt) {  #krt is number of groups
   gfitness<-0;
   X1 <-c(rep(1,N));
   v<-list();
+  particles<-list();
   temp1<-as.integer(length(clustRt)/cn);   #number of groups that centroids could be div
   if (temp1<1){
     t_v<-c()
@@ -198,12 +234,11 @@ denInit<-function(dataset,param,dc,krt) {  #krt is number of groups
     t_v<-rbind(t_v,X[tt2,]);
     v[[1]]<-t_v
   } else if (temp1>=1 &temp1<p){
-    temp2<-min(temp1,krt); 
+    temp2<-min(temp1,krt);
     for (jj in 1:temp2){
       id<-((jj-1)*cn+1):(jj*cn)
       v[[jj]]<-rbind(X[clustRt[id],])
     }
-    
   } else {
     for (jj in 1:krt){
       id<-((jj-1)*cn+1):(jj*cn)
@@ -222,28 +257,26 @@ denInit<-function(dataset,param,dc,krt) {  #krt is number of groups
   
   for (k in 1:p){
     temp_v<-v[[k]];
+    d<-c();
     for (j in 1:cn){
       xv = X - tcrossprod(X1,temp_v[j,]);
       tempDist<-apply(xv,1,function(x) sum(x^2));
       d<-cbind(d,tempDist);
     } 
+    d0<-sqrt(d);
     d = (d+1e-10)^(-1/(m-1));  #L2 distance
-    d0<-d;  
-    J<-sum(diag(t(f0^m)%*%d0))
-    fitness<-1/J
+    #browser()
     pbest <- d/tcrossprod(apply(d,1,sum),rep(1,cn));
-    particle[[k]]=list(pbest=pbest,muX=pbest,muV=pbest,center=c(),fitness=fitness);
-    if (gfitness<fitness){
-      gfitness<-fitness;
-      gbest<-pbest;
-    }
-    result<-list(particle=particle,gbest=gbest)
+    f0<-pbest
+    J<-sum(diag(t(f0^m)%*%d0))
     
+    #browser()
+    particles[[k]]=list(pbest=pbest,muX=pbest,muV=pbest,fitness=J,curFitness=J);
   }
-  #result<-list(rho=rho,delta=delta,clustRt=fClustRt,nneigh=nneigh);
+  return(particles)
 }
-fpsofcm<-function (dataset,param){
-  browser();
+fpsofcm<-function (dataset,param,particles){
+  #browser();
   X<-dataset;
   wmax<-0.9;
   wmin<-0.1
@@ -251,217 +284,269 @@ fpsofcm<-function (dataset,param){
   c1<-2.0;
   c2<-2.0;
   cn<-param$cn;
-  #r1<-0.2;
-  #r2<-0.2;
+  r1<-runif(1,0,1);
+  r2<-runif(1,0,1);
   m = param$m;
   e = param$e;
   N<-nrow(X)
   n<-ncol(X)
-  #**********************Initialize Particle*********************
-  initRes<-randomInit(dataset,param);
-  browser()
-  gbest<-initRes$gbest;
-  particle<-initRes$particle;
-  #*****************end*****************************
-  old_gbest<-matrix(rep(1,N*cn),nrow=N);
-  loopC<-0;
-  gfitness<-10000000;
-  p<-length(particle)
-  J_old<-rep(0,p);
-  J_new<-rep(0,p);
-  while (loopC<500){
-    fpsofitness<-gfitness;
-    fpsoloop<-0;
-    while(fpsoloop<95){
-      fpsoloop<-fpsoloop+1;
-      for (k in 1:p){
-        fm <- particle[[k]]$muX^m;
-        sumf<-apply(fm,2,sum);
-        particle[[k]]$center<-crossprod(fm,X)/(sumf%*%t(rep(1,n)));
-        X1<-rep(1,N);
-        v<-particle[[k]]$center;
-        d<-c();
-        for (j in 1:cn){
-          xv = X - tcrossprod(X1,v[j,]);
-          tempDist<-apply(xv,1,function(x) sum(x^2));
-          d<-cbind(d,tempDist);
-        }
-        f0=particle[[k]]$muX;
-        tempFitness<-sum(diag(t(f0^m)%*%d));
-        J_new[k]<-tempFitness;
-        if (particle[[k]]$fitness<tempFitness){
-          particle[[k]]$fitness<-tempFitness;
-          particle[[k]]$pbest<-f0;
-        }
-        if (particle[[k]]$fitness<gfitness){
-          gfitness<-particle[[k]]$fitness;
-          gbest<-particle[[k]]$pbest;
-        }
-      }
-      
-      #*****************************************************
-      #browser()
-      w<-wmax-fpsoloop*(wmax-wmin)/95;
-      for (k in 1:p){
-        set.seed(k)
-        r1<-runif(1)
-        r2<-runif(1)
-        #browser();
-        particle[[k]]$muV=w*particle[[k]]$muV+c1*r1*(particle[[k]]$pbest-particle[[k]]$muX)+c2*r2*(gbest-particle[[k]]$muX);
-        particle[[k]]$muX=particle[[k]]$muX+particle[[k]]$muV;
-        particle[[k]]$muX[particle[[k]]$muX<0]=0;
-        for (s in 1:N){
-          if (sum(particle[[k]]$muX[s,])==0){
-            set.seed(1000)
-            particle[[k]]$muX[s,]=runif(cn,min=0,max=1)#unifrnd(0,1,1,c);
-          }
-        }
-        #browser()
-        particle[[k]]$muX=particle[[k]]$muX/(apply(particle[[k]]$muX,1,sum)%*%t(rep(1,cn)));
-      }
-      #browser()
-      if (min(abs(J_old-J_new))<e){
-        break;
-      }
-      J_old<-J_new;
-      #browser();
-    }
-    browser();
-    fcmfitness<-gfitness;
-    fcmloop<-0;
-    browser()
-    while (fcmloop<6){
-      fcmloop<-fcmloop+1;
-      for (k in 1:p){
-        fm <- particle[[k]]$muX^m;
-        sumf<-apply(fm,2,sum);
-        particle[[k]]$center<-crossprod(fm,X)/(sumf%*%t(rep(1,n)));
-        X1<-rep(1,N);
-        v<-particle[[k]]$center
-        d<-c()
-        for (j in 1 : cn){
-          xv = X - tcrossprod(X1,v[j,]);
-          tempDist<-apply(xv,1,function(x) sum(x^2));
-          d<-cbind(d,tempDist);
-        }
-        distout<-sqrt(d);
-        f0<-particle[[k]]$muX;
-        tempFitness<-sum(diag(t(f0^m)%*%d));
-        J_new[k]<-tempFitness;
-        #tempFitness=1/sum(sum(f0.^2.*d));
-        if (particle[[k]]$fitness<tempFitness){
-          particle[[k]]$fitness<-tempFitness;
-          particle[[k]]$pbest<-f0;
-        }
-        if (particle[[k]]$fitness<gfitness){
-          gfitness=particle[[k]]$fitness;
-          gbest=particle[[k]]$pbest;
-        }
-      }
-      if (abs(min(J_old-J_new))<e){
-        break;
-      }
-      J_old<-J_new;
-    }
-    loopC<-fcmloop+fpsoloop;
-    if (max(abs(gbest-old_gbest))<e){
+  
+  gbest<-particles[[1]]$pbest;
+  oldGbest<-gbest;
+  loopC<-0
+  while(loopC<=500){
+    fpsoRes<-fpsoModule(X,particles,param)     #fpsoRes=list(particle,iterations)
+    #browser()
+    fcmRes<-fcmModule(fpsoRes$particles,X,param); #fcmRes=list(particle,iterations)
+    loopC<-loopC+fpsoRes$iters+fcmRes$iters
+    gbest<-fcmRes$gbest
+    if (max(abs(gbest-oldGbest))<e){
       break;
     }
-    old_gbest<-gbest;
+    oldGbest<-gbest;
   }
-  browser()
   fm <- gbest^m;
   sumf<-apply(fm,2,sum);
   v<-crossprod(fm,X)/(sumf%*%t(rep(1,n)));
-  J=gfitness;
-  result<-list(f=gbest,d=distout,v=v,iter = loopC,cost = J)
+  d<-c()
+  X1<-rep(1,N);
+  for (j in 1 : cn){
+    xv = X - tcrossprod(X1,v[j,]);
+    tempDist<-apply(xv,1,function(x) sum(x^2));
+    d<-cbind(d,tempDist);
+  }
+  d<-sqrt(d);
+  J=sum(diag(t(fm)%*%d));
+  result<-list(f=gbest,d=d,v=v,iters = loopC,cost = J)
 }
 
-fpso<-function (dataset,param){
+operationPerParticle<-function(particle,dt,param){
+  #browser()
+  N<-nrow(dt)
+  n<-ncol(dt)
+  m<-param$m
+  cn<-param$cn
+  newParticle<-particle;
+  fm <- particle$muX^m;
+  sumf<-apply(fm,2,sum);
+  v<-crossprod(fm,dt)/(sumf%*%t(rep(1,n)));
+  X1<-rep(1,N);
+  d<-c()
+  for (j in 1 : cn){
+    xv = dt - tcrossprod(X1,v[j,]);
+    tempDist<-apply(xv,1,function(x) sum(x^2));
+    d<-cbind(d,tempDist);
+  }
+  distout<-sqrt(d);
+  f0<-particle$muX;
+  tempFitness<-sum(diag(t(f0^m)%*%d));
+  if (particle$fitness>tempFitness){
+    newParticle$fitness<-tempFitness;
+    newParticle$pbest<-f0;
+  }
+  return(newParticle)
+}
+updatePerParticle<-function(particle,w,gbest){
+  N<-nrow(gbest)
+  cn<-ncol(gbest)
+  set.seed(100)
+  r1<-runif(1,0,1)
+  r2<-runif(1,0,1)
+  c1<-2.0
+  c2<-2.0
+  newParticle<-particle
+  #browser();
+  newParticle$muV=w*particle$muV+c1*r1*(particle$pbest-particle$muX)+c2*r2*(gbest-particle$muX);
+  newParticle$muX=particle$muX+newParticle$muV;
+  newParticle$muX[newParticle$muX<0]=0;
+  for (s in 1:N){
+    if (sum(newParticle$muX[s,])==0){
+      set.seed(1000)
+      newParticle$muX[s,]=runif(cn,min=0,max=1)#unifrnd(0,1,1,c);
+    }
+  }
+  #browser()
+  newParticle$muX=newParticle$muX/(apply(newParticle$muX,1,sum)%*%t(rep(1,cn)));
+  return(newParticle)
+}
+
+fcmPerParticle<-function(dt,particle,fcmParam){
+  newParticle<-particle
+  N<-nrow(dt)
+  n<-ncol(dt)
+  cn<-fcmParam$cn
+  m<-fcmParam$m
+  newParticle<-particle;
+  fm <- particle$muX^(fcmParam$m);
+  sumf<-apply(fm,2,sum);
+  v<-crossprod(fm,dt)/(sumf%*%t(rep(1,n)));
+  X1<-rep(1,N);
+  d<-c()
+  for (j in 1 : cn){
+    xv = dt - tcrossprod(X1,v[j,]);
+    tempDist<-apply(xv,1,function(x) sum(x^2));
+    d<-cbind(d,tempDist);
+  }
+  distout<-sqrt(d);
+  f0<-t(apply(distout,1,function(y,m) y^(-2/(m-1))/sum(y^(-2/(m-1))),m=fcmParam$m))
+  newParticle$muX<-f0;
+  tempFitness<-sum(diag(t(f0^m)%*%d));
+  newParticle$curFitness<-tempFitness
+  if (particle$fitness>tempFitness){
+    newParticle$fitness<-tempFitness;
+    newParticle$pbest<-f0;
+  }
+  return(newParticle)
+}
+
+fcmModule<-function(particles,dataset,fcmParam){
+  iters<-0;
+  pn<-length(particles)
+  gbest<-particles[[1]]$pbest;     #Just for initialization
+  tempFitness<-particles[[1]]$fitness;
+  while (iters<6){
+    iters<-iters+1;
+    newParticles<-lapply(particles,fcmPerParticle,dt=dataset,fcmParam=fcmParam)
+    for (k in 2:length(newParticles)){
+      if(newParticles[[k]]$fitness<tempFitness){
+        gbest<-newParticles[[k]]$pbest;
+        tempFitness<-newParticles[[k]]$fitness
+      }
+    }
+  }
+  return(list(particles=newParticles,iters=iters,gbest=gbest))
+}
+
+fpsoModule<-function (dataset,particles,param){
   #browser();
   X<-dataset;
-  w<-0.1;
+  wmax<-0.9;
+  wmin<-0.1
   c1<-2.0;
   c2<-2.0;
   cn<-param$cn;
-  r1<-0.2;
-  r2<-0.2;
+  r1<-runif(1,0,1);
+  r2<-runif(1,0,1);
   m = param$m;
   e = param$e;
   N<-nrow(X)
   n<-ncol(X)
-  gfitness<-100000000;
+  
+  gFitness<-particles[[1]]$fitness;
+  oldGFitness<-gFitness
+  gbest<-particles[[1]]$pbest;
+  oldGbest<-gbest;
   iter<-0;
+  pn<-length(particles);
+  maxLoops<-95;
+  #maxConvergeLoops<-200;
   #**********************Initialize Particle*********************
-  initRes<-randomInit(dataset,param);
-  gbest<-initRes$gbest;
-  particle<-initRes$particle;
-  p<-length(particle)
+  # initRes<-randomInit(dataset,param,pn);
+  # gbest<-initRes$gbest;
+  # particle<-initRes$particle;
+  # p<-length(particle)
   #*****************end*****************************
-  old_gbest<-matrix(rep(1,N*cn),nrow=N);
   loopC<-0;
+  loopC1<-0;
   distout<-c()
-  while (loopC<1000){
+  while (loopC<maxLoops){
+    loopC<-loopC+1;
     iter<-iter+1;
-    #*******************particle update*****************
-    for (k in 1:p){
-      fm <- particle[[k]]$muX^m;
-      sumf<-apply(fm,2,sum);
-      particle[[k]]$center<-crossprod(fm,X)/(sumf%*%t(rep(1,n)));
-      X1<-rep(1,N);
-      v<-particle[[k]]$center
-      d<-c()
-      for (j in 1:cn){
-        xv = X - tcrossprod(X1,v[j,]);
-        tempDist<-apply(xv,1,function(x) sum(x^2));
-        d<-cbind(d,tempDist);
-      }
-      f0=particle[[k]]$muX;
-      tempFitness<-sum(diag(t(f0^m)%*%d));
-      if (particle[[k]]$fitness<tempFitness){
-        particle[[k]]$fitness<-tempFitness;
-        particle[[k]]$pbest<-f0;
-      }
-      if (particle[[k]]$fitness<gfitness){
-        gfitness<-particle[[k]]$fitness;
-        gbest<-particle[[k]]$pbest;
-        distout<-d
+    #browser()
+    newParticles<-lapply(particles,operationPerParticle,dt=X,param=param)
+    for (k in 1:length(newParticles)){
+      if(newParticles[[k]]$fitness<gFitness){
+        gbest<-newParticles[[k]]$pbest;
+        gFitness<-newParticles[[k]]$fitness
       }
     }
-    #*****************************************************
-    for (k in 1:p){
-      set.seed(k)
-      r1<-runif(1);
-      r2<-runif(1);
-      particle[[k]]$muV=w*particle[[k]]$muV+c1*r1*(particle[[k]]$pbest-particle[[k]]$muX)+c2*r2*(gbest-particle[[k]]$muX);
-      particle[[k]]$muX=particle[[k]]$muX+particle[[k]]$muV;
-      particle[[k]]$muX[particle[[k]]$muX<0]=0;
-      for (s in 1:N){
-        if (sum(particle[[k]]$muX[s,])==0){
-          set.seed(1000)
-          particle[[k]]$muX[s,]=runif(cn,min=0,max=1)#unifrnd(0,1,1,c);
-        }
+    w<-wmax-loopC*(wmax-wmin)/maxLoops;
+    newParticles<-lapply(newParticles,updatePerParticle,w=w,gbest=gbest)
+    
+    if (max(abs(gFitness-oldGFitness))<=1e-5){ 
+        break
       }
-      #browser()
-      particle[[k]]$muX=particle[[k]]$muX/(apply(particle[[k]]$muX,1,sum)%*%t(rep(1,cn)));
-    }
-    #*****************************************************
-    if (max(abs(gbest-old_gbest))>1e-3){ 
-      loopC<-0;
-    } else {
-      loopC<-loopC+1;
-    }
-    old_gbest<-gbest;
+    
+    oldGFitness<-gFitness;
   }
-  browser()
-  fm <- gbest^m;
-  sumf<-apply(fm,2,sum);
-  v<-crossprod(fm,X)/(sumf%*%t(rep(1,n)));
-  result<-list(f=gbest,d=distout,v=v,iter = iter,cost = gfitness)
+  return(list(particles=newParticles,gbest=gbest,iters = iter))
 }
+
+fcm<-function(dataset,fcmParam,particles){  #only 1 particle
+  iters<-0;
+  mu<-particles[[1]]$muX;     #Just for initialization
+  oldMu<-mu+10;
+  e<-fcmParam$e
+  particle<-particles[[1]];
+  while (max(abs(mu-oldMu))>e){
+    iters<-iters+1;
+    particle<-fcmPerParticle(dataset,particle,fcmParam)
+    oldMu<-mu;
+    mu<-particle$muX
+  }
+  return(list(f=particle$muX,d=NULL,v=NULL,iters = iters,cost = particle$curFitness))
+}
+
+fpso<-function (dataset,param,particles){
+  #browser();
+  X<-dataset;
+  wmax<-0.9;
+  wmin<-0.1
+  c1<-2.0;
+  c2<-2.0;
+  cn<-param$cn;
+  r1<-runif(1,0,1);
+  r2<-runif(1,0,1);
+  m = param$m;
+  e = param$e;
+  N<-nrow(X)
+  n<-ncol(X)
+  #browser()
+  gFitness<-particles[[1]]$fitness;
+  oldGFitness<-gFitness
+  gbest<-particles[[1]]$pbest;
+  oldGbest<-gbest;
+  iter<-0;
+  pn<-length(particles);
+  maxLoops<-1000;
+  convergeLoops<-200
+  #browser()
+  loopC<-0;
+  loop1<-0;
+  distout<-c()
+  while (loopC<maxLoops){
+    loopC<-loopC+1;
+    iter<-iter+1;
+    newParticles<-lapply(particles,operationPerParticle,dt=X,param=param)
+    tempMinFitness<-newParticles[[1]]$curFitness;
+    for (k in 1:length(newParticles)){
+      tempMinFitness<-min(tempMinFitness,newParticles[[k]]$curFitness);
+      if(newParticles[[k]]$fitness<gFitness){
+        gbest<-newParticles[[k]]$pbest;
+        gFitness<-newParticles[[k]]$fitness
+      }
+    }
+    w<-wmax-loop1*(wmax-wmin)/convergeLoops;
+    newParticles<-lapply(newParticles,updatePerParticle,w=w,gbest=gbest)
+    if (max(abs(gbest-oldGbest))<=1e-5){
+      loop1<-loop1+1;
+      if (loop1==convergeLoops){
+        break  
+      }
+    } else{
+      loop1<-0;
+    }
+    oldGbest<-gbest;
+  }
+  return(list(f=gbest,d=NULL,v=NULL,iters = iter,cost = gFitness))
+}
+
+
 
 initCentroid<-function(distMx,dc){
   ND<-nrow(distMx)
+  dThresh<-sort(as.vector(distMx),decreasing=TRUE)[as.integer(dc*0.01*ND^2)]
+  
   rho<-rep(0,ND)
   delta<-rep(0,ND)
   nneigh<-rep(0,ND);
@@ -470,14 +555,15 @@ initCentroid<-function(distMx,dc){
   finalCenterAt<-c();
   for (i in 1:(ND-1)){
     for (j in (i+1):ND){
-      rho[i]=rho[i]+exp(-(distMx[i,j]/dc)*(distMx[i,j]/dc))+1e-8;
-      rho[j]=rho[j]+exp(-(distMx[i,j]/dc)*(distMx[i,j]/dc))+1e-8; 
+      rho[i]=rho[i]+exp(-(distMx[i,j]/dThresh)*(distMx[i,j]/dThresh))+1e-8;
+      rho[j]=rho[j]+exp(-(distMx[i,j]/dThresh)*(distMx[i,j]/dThresh))+1e-8; 
     }
   } 
   maxd<-max(distMx);
   s_d_rho<-sort(rho,decreasing=T,index.return=T)
   rho_sorted<-s_d_rho$x
   ordrho<-s_d_rho$ix
+  #browser()
   #[rho_sorted,ordrho]=sort(rho,'descend');
   delta[ordrho[1]]<--1;
   #delta(ordrho(1))=-1.;
@@ -492,7 +578,7 @@ initCentroid<-function(distMx,dc){
     delta[ordrho[ii]]<-maxd;
     for (jj in 1:(ii-1)){
       if(distMx[ordrho[ii],ordrho[jj]]<delta[ordrho[ii]]){
-        delta[ordrho[ii]]=dist[ordrho[ii],ordrho[jj]]+0.000000000000001;
+        delta[ordrho[ii]]=distMx[ordrho[ii],ordrho[jj]]+0.000000000000001;
       }
       nneigh[ordrho[ii]]=ordrho[jj]; 
     }
@@ -509,18 +595,20 @@ initCentroid<-function(distMx,dc){
   }
   delta[ordrho[1]]=max(delta);
   plot(delta,rho,'o');
+  #browser()
    # %*******************For BSN 2015******************************
   gama=(delta/max(delta))*(rho/max(rho));
-  sorted_clustCent<-sort(gama(potClustRt),decreasing=T,index.return=T);
+  sorted_clustCent<-sort(gama[potClustRt],decreasing=T,index.return=T);
   sorted_clustCent_gama<-sorted_clustCent$x
   ordinx<-sorted_clustCent$ix
-  fClustRt<-potClustRt(ordinx);
+  fClustRt<-potClustRt[ordinx];
   #finalCenterAt=initCenterAt;
 #*********************************The end********************************
   result<-list(rho=rho,delta=delta,clustRt=fClustRt,nneigh=nneigh);
 }
 
-normalit<-function(m){
-  return (m - min(m))/(max(m)-min(m))
+regularize<-function(X){
+  zz<-apply(X,2,function(m) (m - min(m))/(max(m)-min(m)))
+  return(zz) 
 }
 

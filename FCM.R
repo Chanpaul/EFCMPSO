@@ -3,6 +3,16 @@ library(stats)
 library(gtools)  # for permu
 library(pdfCluster) #for adjusted rand index;
 library(dplyr)
+library(bigmemory)
+library(doParallel)
+library(foreach)
+#library(rscala)
+library(data.table)
+library(Rcpp)
+
+directory<-dirname(sys.frame(1)$ofile)
+sourceCpp(paste0(directory,"//FCM.cpp"))
+#scala<-scalaInterpreter()
 
 #@param particle = list(pbest=pbest,muX=muX,muV=muV,fitness=0)
 #@particle$pbest    the best of the particle;
@@ -95,10 +105,12 @@ ImportData<-function(dataFile)
   {
     mydata=read.csv(dataPath,sep=sepStr,header=TRUE)
   } else {
-    mydata<-strsplit(readLines(dataPath),"\n")
-    regPat<-"\\d*\\.?\\d+"
-    mydata<-lapply(mydata,function(line) as.numeric(grep(regPat,unlist(line),perl=TRUE,value=TRUE)))
-    mydata<-data.frame(matrix(unlist(mydata),nrow=length(mydata),byrow=TRUE))
+    #browser()
+    mydata<-fread(dataPath)
+    # mydata<-strsplit(readLines(dataPath),"\n")
+    # regPat<-"\\d*\\.?\\d+"
+    # mydata<-lapply(mydata,function(line) as.numeric(grep(regPat,unlist(line),perl=TRUE,value=TRUE)))
+    # mydata<-data.frame(matrix(unlist(mydata),nrow=length(mydata),byrow=TRUE))
   }
   return(mydata)  
 }
@@ -202,22 +214,64 @@ randomParInit<-function(dataset,param){  #random initialization;
   }
   return(particle)  #return particle;
 }
-
-# mixDist<-function(dt,){
-#   
-# }
+bigDist<-function(dataset){
+  nr<-nrow(dataset)
+  bigdist<-big.matrix(nr,nr,type="double",init=0.0)
+  registerDoParallel();
+  foreach(i=1:(nr-1)) %dopar% {
+    foreach(j=(i+1):nr) %dopar%{
+      d<-sqrt(sum((dataset[i,]-dataset[j,])^2));
+      bigdist[i,j]=d;
+      bigdist[j,i]=d;
+    }
+    }
+  return(bigdist)
+}
+# scalaDist<-scala$def('dataset:Array[Array[Double]]', '
+# def dist(dataset:Array[Array[Double]]): Array[Array[Double]]= {
+#   var distMx=Array[Array[Double]]();
+#   var datasz=dataset.size;
+#   println(datasz);
+#   var i=0;
+#   while(i<datasz-1) {
+#     var j=i+1;
+#     while (j<datasz){
+#         var tsum=dataset(i).zip(dataset(j)).map(x=>math.pow(x._1-x._2,2)).sum;
+#         distMx=distMx:+Array((i+1).toDouble,(j+1).toDouble,math.sqrt(tsum));
+#         j=j+1;
+#     }
+#     i=i+1;
+#   }
+#  return(distMx);                    
+# };
+# 
+# dist(dataset);
+#                      ')
 
 denParInit<-function(dataset,param) {  #krt is number of groups
   X<-dataset;
+  m<-param$m
+  krt<-param$krt;
+  dc<-param$dc
+  #browser()
+  # set.seed(166)
+  # p<-0.05
+  # tempSet<-X[sample(nrow(dataset),round(nrow(dataset)*p),replace=FALSE),]
+  browser()
+  distMx<-rcppdist(data.matrix(X));
+  #distance<-dist(X, method = "euclidean", p = 2)
+  #distMx<-scalaDist(tempSet);
+  browser();
   cn<-param$cn;  #cluster number
   N<-nrow(X)     #number of data
   n<-ncol(X)     #number of attribute
   p<-param$pn; #number of particle
-  m<-param$m
-  krt<-param$krt;
-  dc<-param$dc
-  distMx<-dist(X, method = "euclidean", p = 2)
-  result<-initCentroid(as.matrix(distMx),dc);
+  #distMx<-as.matrix(distance)
+  #distMx<-dist2mat(distance)
+  # distMx<-bigDist(X);
+  # browser()
+  result<-cppInitCentroid(distMx,dc);
+  #result<-initCentroid(distMx,dc);
   clustRt<-result$clustRt;
   rho<-result$rho;
   delta<-result$delta;
@@ -274,6 +328,7 @@ denParInit<-function(dataset,param) {  #krt is number of groups
     #browser()
     particles[[k]]=list(pbest=pbest,muX=pbest,muV=pbest,fitness=J,curFitness=J);
   }
+  #browser()
   return(particles)
 }
 fpsofcm<-function (dataset,param,particles){
@@ -341,6 +396,7 @@ operationPerParticle<-function(particle,dt,param){
   distout<-sqrt(d);
   f0<-particle$muX;
   tempFitness<-sum(diag(t(f0^m)%*%d));
+  #browser()
   if (particle$fitness>tempFitness){
     newParticle$fitness<-tempFitness;
     newParticle$pbest<-f0;
@@ -432,7 +488,7 @@ fpsoModule<-function (dataset,particles,param){
   e = param$e;
   N<-nrow(X)
   n<-ncol(X)
-  
+  #browser()
   gFitness<-particles[[1]]$fitness;
   oldGFitness<-gFitness
   gbest<-particles[[1]]$pbest;
@@ -542,7 +598,93 @@ fpso<-function (dataset,param,particles){
   return(list(f=gbest,d=NULL,v=NULL,iters = iter,cost = gFitness))
 }
 
+# initCentroidScala<-scala$def('distMx:Array[Array[Int]],dc:Int','
+#   def dense(distMx:Array[Array[Int]],dc:Int):Array[Int]={
+# var ND=distMx.size;
+# var sortedDistMx=distMx.sortWith((x,y)=>x(2)>y(2));
+# var dThresh=sortedDistMx.apply(dc*0.01*ND).apply(2);
+# var maxd=sortedDistMx.head.apply(2);
+# var numOfPt=distMx.map(x=>x(2)).max;
+# var rho=Array.ofDim[Double](numOfPt);
+# var delta=Array.ofDim[Double](numOfPt);
+# var nneigh=Array.ofDim[Int](numOfPt);
+# var isBorder=Array.ofDim[Int](numOfPt);    // the border points are not directed neighbors of any points.    
+# var initCenterAt=Array.ofDim[Int](numOfPt);
+# var finalCenterAt=Array[Int]();
+# for (i<-0 to ND-2;j<-i+1 to ND-1) {
+# var dij=distMx.filter(x=>x(0)==i | x(0)==j).filter(x=>x(1)==i | x(1)==j).head.apply(2);
+# var temp=exp(-(dij/dThresh)*(dij/dThresh))+1e-8
+# rho(i)=rho(i)+temp;
+# rho(j)=rho(j)+temp; 
+# }
+# var s_d_rho=rho.zip(0 to numOfPt-1).sortWith(_._1>_._1)
+# 
+# delta(s_d_rho.head._2)=-1;
+# nneigh(s_d_rho.head._2)=s_d_rho.head._2;
+# initCenterAt(s_d_rho.head._2)=s_d_rho.head._2;
+# potClustRt=potClustRt:+s_d_rho.head._2;
+# var previous=Array(s_d_rho.head);
+# for (ii <-s_d_rho.drop(1)) {
+#  delta(ii._2)<-maxd;
+#  for (jj <-previous) {
+#    var tdij=distMx.filter(x=>x(0)==ii._2 | x(0)==jj._2).filter(x=>x(1)==ii._2 | x(1)==jj._2).head.apply(2);
+#   if(tdij<delta(ii._2){
+#      delta(ii._2)=tdij+0.000000000000001;
+#   }
+#  nneigh(ii._2)=jj._2; 
+#  }
+# previous=previous:+ii;
+# var tdij=distMx.filter(x=>x(0)==ii._2 | x(0)==nneigh(ii._2)).filter(x=>x(1)==ii._2 | x(1)==nneigh(ii._2)).head.apply(2);
+# if (tdij>dc){
+#     potClustRt=potClustRt:+ii._2); 
+#     initCenterAt(ii._2)=ii._2;
+#    } else {
+#            initCenterAt(ii._2)=initCenterAt(nneigh(ii._2));
+#    }
+# }
+# delta(s_d_rho.head._2)=delta.max;
+# var gama=delta.map(x=>x/delta.head).zip(rho.map(y=>y/rho.max)).map(_._1*_._2).zip(0 to ND-1);
+# var sorted_clustCent=gama.filter(x=>potClustRt.contains(x._2)).sortBy(_._1>_._1);
+# var fClustRt=sorted_clustCent.map(_._2);
+# return(fClustRt);
+#   }
+# dense(distMx,dc);
+#                              ')
 
+comDelta<-function(i,distMx,ordrho){
+  delta<-0;
+  if(i!=1){
+    temp<-lapply(1:i-1,function(ii,jj,distmx,ord_rho) distmx[ord_rho[ii],ord_rho[jj]],
+                 jj=i,
+                 distmx=distMx,
+                 ord_rho=ordrho)
+  delta<-min(unlist(temp));  
+  }
+  return(delta);
+}
+
+comDensity<-function(id,distMx,dc_th){
+  ND<-nrow(distMx);
+  temp<-lapply((id+1):ND,
+               function(i,j,distmx,dc) exp(-(distmx[i,j]/dc)*(distmx[i,j]/dc))+1e-8,
+               j=id,
+               distmx=distMx,
+               dc=dc_th);
+  return(unlist(temp))
+}
+comRho<-function(id,densMx){
+  sum1<-0
+  sum2<-0
+  if(id!=1)
+  {
+    temp<-lapply(1:(id-1),function(i,j,dsMx) dsMx[[i]][j-i],j=id,dsMx=densMx)
+    sum2<-sum(unlist(temp))
+  }
+  if (id!=(length(densMx)+1)){
+    sum1<-sum(densMx[[id]])
+  }
+  return(sum2+sum1)
+}
 
 initCentroid<-function(distMx,dc){
   ND<-nrow(distMx)
@@ -554,12 +696,17 @@ initCentroid<-function(distMx,dc){
   isBorder<-rep(1,ND);    # the border points are not directed neighbors of any points.    
   initCenterAt<-rep(0,ND);
   finalCenterAt<-c();
-  for (i in 1:(ND-1)){
-    for (j in (i+1):ND){
-      rho[i]=rho[i]+exp(-(distMx[i,j]/dThresh)*(distMx[i,j]/dThresh))+1e-8;
-      rho[j]=rho[j]+exp(-(distMx[i,j]/dThresh)*(distMx[i,j]/dThresh))+1e-8; 
-    }
-  } 
+  tempDens<-lapply(1:(ND-1),comDensity,distMx=distMx,dc_th=dThresh);
+  rho<-unlist(lapply(1:ND,comRho,densMx=tempDens));
+  # registerDoParallel();
+  # foreach (i =1:(ND-1)) %do% {
+  #   foreach (j =(i+1):ND) %do% {
+  #     temp<-exp(-(distMx[i,j]/dThresh)*(distMx[i,j]/dThresh))+1e-8;
+  #     rho[i]=rho[i]+temp;
+  #     rho[j]=rho[j]+temp; 
+  #   }
+  # }
+  
   maxd<-max(distMx);
   s_d_rho<-sort(rho,decreasing=T,index.return=T)
   rho_sorted<-s_d_rho$x
@@ -574,28 +721,31 @@ initCentroid<-function(distMx,dc){
   #initCenterAt(ordrho(1))=ordrho(1);
   potClustRt<-c(ordrho[1]);
   #potClustRt=[ordrho(1)];
+  delta<-unlist(lapply(1:ND,comDelta,distMx=distMx,ordrho=ordrho))
+  delta[ordrho[1]]=maxd
+  potClustRt<-ordrho[ordrho==which(delta>dThresh)];
   
-  for (ii in 2:ND){
-    delta[ordrho[ii]]<-maxd;
-    for (jj in 1:(ii-1)){
-      if(distMx[ordrho[ii],ordrho[jj]]<delta[ordrho[ii]]){
-        delta[ordrho[ii]]=distMx[ordrho[ii],ordrho[jj]]+0.000000000000001;
-      }
-      nneigh[ordrho[ii]]=ordrho[jj]; 
-    }
-      
-    isBorder[nneigh[ordrho[ii]]]=0;
-    if (distMx[nneigh[ordrho[ii]],ordrho[ii]]>dc){
-      potClustRt=c(potClustRt,ordrho[ii]); 
-      initCenterAt[ordrho[ii]]=ordrho[ii];
-    }
-    else {
-      initCenterAt[ordrho[ii]]=initCenterAt[nneigh[ordrho[ii]]];
-    }
-      
-  }
-  delta[ordrho[1]]=max(delta);
-  plot(delta,rho,'o');
+  # foreach (ii =2:ND) %do% {
+  #   delta[ordrho[ii]]<-maxd;
+  #   foreach (jj = 1:(ii-1)) %do% { 
+  #     if(distMx[ordrho[ii],ordrho[jj]]<delta[ordrho[ii]]){
+  #       delta[ordrho[ii]]=distMx[ordrho[ii],ordrho[jj]]+0.000000000000001;
+  #     }
+  #     nneigh[ordrho[ii]]=ordrho[jj]; 
+  #   }
+  #     
+  #   isBorder[nneigh[ordrho[ii]]]=0;
+  #   if (distMx[nneigh[ordrho[ii]],ordrho[ii]]>dc){
+  #     potClustRt=c(potClustRt,ordrho[ii]); 
+  #     initCenterAt[ordrho[ii]]=ordrho[ii];
+  #   }
+  #   else {
+  #     initCenterAt[ordrho[ii]]=initCenterAt[nneigh[ordrho[ii]]];
+  #   }
+  #     
+  # }
+  # delta[ordrho[1]]=max(delta);
+  #plot(delta,rho,'o');
   #browser()
    # %*******************For BSN 2015******************************
   gama=(delta/max(delta))*(rho/max(rho));
@@ -607,14 +757,31 @@ initCentroid<-function(distMx,dc){
 #*********************************The end********************************
   result<-list(rho=rho,delta=delta,clustRt=fClustRt,nneigh=nneigh);
 }
-
+cppInitCentroid<-function(distMx,dc){
+  ND<-nrow(distMx);
+  browser();
+  rho<-cppComRho(distMx,dc);
+  rdelta<-cppComDelta(distMx,rho);
+  delta<-rdelta[,2];
+  dThresh<-sort(as.vector(distMx[,3]),decreasing=TRUE)[as.integer(dc*0.01*ND^2)]
+  
+  potClustRt<-which(delta>dThresh);
+  
+  gama=(delta/max(delta))*(rho/max(rho));
+  sorted_clustCent<-sort(gama[potClustRt],decreasing=T,index.return=T);
+  sorted_clustCent_gama<-sorted_clustCent$x
+  ordinx<-sorted_clustCent$ix
+  fClustRt<-potClustRt[ordinx];
+  
+  result<-list(rho=rho,delta=delta,clustRt=fClustRt,nneigh=nneigh);
+}
 regularize<-function(X){
   zz<-apply(X,2,function(m) (m - min(m))/(max(m)-min(m)))
   return(zz) 
 }
 singleCategoryToReal<-function(x) {
   #browser()
-  if (class(x)=="factor"){
+  if (class(x) %in% c("factor" ,"character")){
     pop<-unique(x)
     y<-unlist(lapply(x,function(z) which(pop==z)))
   } else y<-x

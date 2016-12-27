@@ -257,11 +257,11 @@ denParInit<-function(dataset,param) {  #krt is number of groups
   # set.seed(166)
   # p<-0.05
   # tempSet<-X[sample(nrow(dataset),round(nrow(dataset)*p),replace=FALSE),]
-  browser()
+  #browser()
   distMx<-rcppdist(data.matrix(X));
   #distance<-dist(X, method = "euclidean", p = 2)
   #distMx<-scalaDist(tempSet);
-  browser();
+  #browser();
   cn<-param$cn;  #cluster number
   N<-nrow(X)     #number of data
   n<-ncol(X)     #number of attribute
@@ -285,7 +285,8 @@ denParInit<-function(dataset,param) {  #krt is number of groups
     t_v<-c()
     t_v<-rbind(t_v,X[clustRt,]);
     tt1<-1:N;
-    tt2<-sample(tt1[-1*clustRt],cn-length(clustRt));
+    #browser()
+    tt2<-base::sample(tt1[-1*clustRt],cn-length(clustRt));
     t_v<-rbind(t_v,X[tt2,]);
     v[[1]]<-t_v
   } else if (temp1>=1 &temp1<p){
@@ -305,7 +306,7 @@ denParInit<-function(dataset,param) {  #krt is number of groups
     diffl<-p-t_len;
     for (jj in 1:diffl){
       tt1<-1:N;
-      tt2<-sample(tt1[-1*clustRt],cn);
+      tt2<-base::sample(tt1[-1*clustRt],cn);
       v[[t_len+jj]]<-rbind(X[tt2,]);
     }
   }
@@ -759,11 +760,12 @@ initCentroid<-function(distMx,dc){
 }
 cppInitCentroid<-function(distMx,dc){
   ND<-nrow(distMx);
-  browser();
+  #browser();
   rho<-cppComRho(distMx,dc);
   rdelta<-cppComDelta(distMx,rho);
   delta<-rdelta[,2];
-  dThresh<-sort(as.vector(distMx[,3]),decreasing=TRUE)[as.integer(dc*0.01*ND^2)]
+  nneigh<-rdelta[,1]
+  dThresh<-sort(as.vector(delta),decreasing=TRUE)[as.integer(dc*0.01*length(delta))]
   
   potClustRt<-which(delta>dThresh);
   

@@ -16,33 +16,33 @@ dirPath<-paste0(directory,"//Dataset//")
 #dirPath<-"C://Users//wangc//LaptopBackUp//Wangjin//UmassMed//Code//Dataset//"
 dataFileList<-list();
 id<-1
-browser()
+#browser()
 
 ##********************QP******************
-# dataFile<-"ppp_zero_wide//QP_dur_clusterlabel.csv"
-# dataName<-paste0(dirPath,dataFile)
-# dataFile<-list(name=dataName,fmt="csv",sep=",",
-#                label=27,cn=4,attrCol=5:22
-# )
-# dataFileList[[id]]<-dataFile
-# id<-id+1
-##*******************TDTA*******************
-dataFile<-"TDTA//TDTA_mi10_10_dur_idx.csv"
+dataFile<-"ppp_zero_wide//QP_dur_clusterlabel.csv"
 dataName<-paste0(dirPath,dataFile)
 dataFile<-list(name=dataName,fmt="csv",sep=",",
-               label=11,cn=6,attrCol=4:10
+               label=27,cn=4,attrCol=5:22
+)
+dataFileList[[id]]<-dataFile
+id<-id+1
+##*******************TDTA*******************
+dataFile<-"TDTA//TDTA_mi10_10_dur_idx_single.csv"
+dataName<-paste0(dirPath,dataFile)
+dataFile<-list(name=dataName,fmt="csv",sep=",",
+               label=13,cn=3,attrCol=4:12
 )
 dataFileList[[id]]<-dataFile
 id<-id+1
 
 ##********************glass******************
-# dataFile<-"glass//glass.data"
-# dataName<-paste0(dirPath,dataFile)
-# dataFile<-list(name=dataName,fmt="csv",sep=",",
-#                label=11,cn=6,attrCol=2:10
-# )
-# dataFileList[[id]]<-dataFile
-# id<-id+1
+dataFile<-"glass//glass.data"
+dataName<-paste0(dirPath,dataFile)
+dataFile<-list(name=dataName,fmt="csv",sep=",",
+               label=11,cn=6,attrCol=2:10
+)
+dataFileList[[id]]<-dataFile
+id<-id+1
 ##********************Image segmentation******************
 # dataFile<-"imageSegmentation//segmentation.data"
 # dataName<-paste0(dirPath,dataFile)
@@ -53,29 +53,29 @@ id<-id+1
 # id<-id+1
 
 # # ##***************iris**********************
-# dataFile<-"iris//iris.data"
-# dataName<-paste(dirPath,dataFile,sep="")
-# #browser()
-# dataFile<-list(name=dataName,fmt="txt",sep=",",
-#                label=5,cn=3,attrCol=-5)
-# 
-# dataFileList[[id]]<-dataFile
-# id<-id+1
+dataFile<-"iris//iris.data"
+dataName<-paste(dirPath,dataFile,sep="")
+#browser()
+dataFile<-list(name=dataName,fmt="txt",sep=",",
+               label=5,cn=3,attrCol=-5)
+
+dataFileList[[id]]<-dataFile
+id<-id+1
 #
 ##******************MAGIC gamma telescope ***********************
-# dataFile<-"MAGIC_Gamma_Telescope//magic04.data"
-# dataName<-paste0(dirPath,dataFile)
-# dataFile<-list(name=dataName,fmt="csv",sep=",",label=11,cn=2,attrCol=1:10)
-# 
-# dataFileList[[id]]<-dataFile
-# id<-id+1
+dataFile<-"MAGIC_Gamma_Telescope//magic04.data"
+dataName<-paste0(dirPath,dataFile)
+dataFile<-list(name=dataName,fmt="csv",sep=",",label=11,cn=2,attrCol=1:10)
+
+dataFileList[[id]]<-dataFile
+id<-id+1
 # ##****************inonsphere*************************
-# dataFile<-"ionosphere//ionosphere.data"
-# dataName<-paste0(dirPath,dataFile)
-# dataFile<-list(name=dataName,fmt="txt",sep=",",label=35,cn=2,attrCol=c(-2,-35))
-# 
-# dataFileList[[id]]<-dataFile
-# id<-id+1
+dataFile<-"ionosphere//ionosphere.data"
+dataName<-paste0(dirPath,dataFile)
+dataFile<-list(name=dataName,fmt="txt",sep=",",label=35,cn=2,attrCol=c(-2,-35))
+
+dataFileList[[id]]<-dataFile
+id<-id+1
 # ##****************Simulated inonsphere*************************
 # dataFile<-"ionosphere//inon10000x35.csv"
 # dataName<-paste0(dirPath,dataFile)
@@ -85,12 +85,12 @@ id<-id+1
 # id<-id+1
 
 # ##****************pima-indians-diabetes*************************
-# dataFile<-"pima-indians-diabetes//pima-indians-diabetes.data"
-# dataName<-paste0(dirPath,dataFile)
-# dataFile<-list(name=dataName,fmt="txt",sep=",",label=9,cn=2,attrCol=-9)
-# 
-# dataFileList[[id]]<-dataFile
-# id<-id+1
+dataFile<-"pima-indians-diabetes//pima-indians-diabetes.data"
+dataName<-paste0(dirPath,dataFile)
+dataFile<-list(name=dataName,fmt="txt",sep=",",label=9,cn=2,attrCol=-9)
+
+dataFileList[[id]]<-dataFile
+id<-id+1
 # ##****************wine*************************
 # dataFile<-"wine//wine.data"
 # dataName<-paste0(dirPath,dataFile)
@@ -110,20 +110,20 @@ id<-id+1
 # }
 
 # ##****************BreastCancer*************************
-# dataFile<-"breast-cancer-wisconsin//breast-cancer-wisconsin.data"
-# dataName<-paste0(dirPath,dataFile)
-# dataFile<-list(name=dataName,fmt="txt",sep=",",label=11,cn=2,attrCol=2:10)
-# 
-# dataFileList[[id]]<-dataFile
-# id<-id+1
+dataFile<-"breast-cancer-wisconsin//breast-cancer-wisconsin.data"
+dataName<-paste0(dirPath,dataFile)
+dataFile<-list(name=dataName,fmt="txt",sep=",",label=11,cn=2,attrCol=2:10)
+
+dataFileList[[id]]<-dataFile
+id<-id+1
 # 
 # ##****************pageblock*************************
-# dataFile<-"pageblock//page-blocks.data"
-# dataName<-paste0(dirPath,dataFile)
-# dataFile<-list(name=dataName,fmt="others",sep=" ",label=11,cn=5,attrCol=-11)
-# 
-# dataFileList[[id]]<-dataFile
-# id<-id+1
+dataFile<-"pageblock//page-blocks.data"
+dataName<-paste0(dirPath,dataFile)
+dataFile<-list(name=dataName,fmt="others",sep=" ",label=11,cn=5,attrCol=-11)
+
+dataFileList[[id]]<-dataFile
+id<-id+1
 ##********************Simulated Pageblock Data****************************
 # tf<-c(1,1.5,2)*10000
 # for (i in tf){
@@ -155,7 +155,7 @@ postProcess<-function(src,des){
 singleRun<-function(df,runType,initType,param){
   
   myData<-na.omit(ImportData(df));
-  # browser()
+  #browser()
   myData<-batchCategoryToReal(myData);
   
   ptm<-proc.time()
@@ -198,10 +198,10 @@ mcRun<-function(paramDataFile,mcNum,runType,initType,resultDir){
   write.csv(resdatatable,resFile,sep=",",col.names=TRUE)
   
 }
-initName<-c("denParInit")#,"randomParInit")
-coreName<-c("fpsofcm")#,"fpso","fcm")
-# initName<-c("randomParInit")
-# coreName<-c("fpsofcm","fcm")
+# initName<-c("denParInit")#,"randomParInit")
+# coreName<-c("fpsofcm")#,"fpso","fcm")
+initName<-c("randomParInit")
+coreName<-c("fpsofcm","fcm")
 #coreName<-c("fpso")
 saveIn<-paste0(directory,"//results")
 for (init in initName){
